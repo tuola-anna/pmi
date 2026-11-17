@@ -1,0 +1,49 @@
+name: CI/CD Pipeline
+
+on:
+  push:        # Запускать при любом сохранении кода (push)
+    branches: [ main ]
+  pull_request: # И при попытке сделать Merge
+    branches: [ main ]
+
+jobs:
+  # --- БЛОК 1: Проверка кода (Качество) ---
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v3
+
+      - name: 2. Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 3. Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt 
+
+      - name: 4. Lint with Ruff
+        run: ruff check .
+
+      - name: 5. Type check with Mypy
+        run: mypy .
+
+  # --- БЛОК 2: Проверка Docker (Сборка образа) ---
+  docker-build:
+    name: Docker Build Check
+    runs-on: ubuntu-latest
+    needs: quality # Ждем, пока первый блок пройдет успешно
+    steps:
+      - name: 1. Checkout code
+        uses: actions/checkout@v3
+
+      - name: 2. Set up Docker
+        uses: docker/setup-buildx-action@v2
+
+      - name: 3. Build images
+        run: docker compose build
+        # Эта команда проверит Dockerfile и docker-compose.yml.
+        # Если там ошибка (например, опечатка в пути) - здесь будет красный крест.
